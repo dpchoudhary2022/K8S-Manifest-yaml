@@ -1,0 +1,1065 @@
+
+
+## EXAMPLE-1 CREATE A POD YAML/MANIFEST FILE
+
+vi mypod1.yml
+
+# check- kubectl explain pods ( show yml format/content//api version 
+
+kind: Pod
+apiVersion: v1
+metadata:
+     name: pod1
+     labels:
+        class: dev
+        dept: prod
+spec:
+  containers:
+   - name: container1
+     image: ubuntu
+     command: ["/bin/bash", "-c", "while true; do echo Hello-Welcome; sleep 5 ; done" ]
+
+
+
+save and exit vi
+
+---------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------
+
+
+## EXAMPLE-2 CREATE A POD YAML/MANIFEST FILE 
+
+vi mypod2.yml
+
+kind: Pod
+apiVersion: v1
+metadata:                     #####-->> under metadata: pod name/labels
+     name: pod2
+     labels:                   
+        class: dev
+        dept: prod         #######-->> these are all labels 
+        env: testing
+        lbl: dpc
+
+spec:                                    ##-->> under spec: containers details/container name/image
+  containers:                            ##-->> we can create multiple container here
+   - name: container1
+     image: ubuntu
+     command: ["/bin/bash", "-c", "while true; do echo Hello-Welcome!!!!; sleep 5 ; done" ]
+  containers:
+   - name: container2
+     image: ubuntu
+     command: ["/bin/bash", "-c", "while true; do echo Hello-Chennai; sleep 5 ; done" ]
+
+
+save & exit vi
+
+-------------------------------------------------------------------------------------------------------------------------
+
+# to create pod
+$ kubectl apply -f mypod1.yml
+
+# kubectl get pods
+$ kubectl get pods -o wide ##-->> it will shows pods ip address
+
+# to see labels in pod
+$ kubectl get pods --show-labels
+
+# if we want to add labels in existing pod by imperative command (not by yml file)
+$ kubectl label pods pod1 name=dp  ## in pod1 / new label name=dp added
+
+
+# list all pods matching a  specific label 
+$ kubectl get pods -l dept=prod   ##-->> dept=prod is label name 
+
+# list all pods where dept=prod label is not present
+$ kubectl get pods -l dept!=prod
+
+# if we want to delete pod using label name
+$ kubectl delete pod -l dept=prod   ##-->> it will delete pods wich label name are dept=prod
+
+# kubectl delete pod -l dept!=prod  ##-->> delete that pods which not labels with dept=prod 
+
+# to see pods
+$ kubectl get pods
+
+
+# list all pods where label is-  env=development & env=testing
+$ kubectl get pods -l 'env in (development,testing)'
+
+
+# list all pods where label is-  env!=devlopment & env!=testing
+$ kubectl get pods -l 'env notin (development,testing)'
+-----------------------------------------------------------------------------------------------------------------------------
+
+NODE SELECTOR EXAMPLE-
+
+vi pod6.yml
+
+kind: Pod
+apiVersion: v1
+metadata:
+  name: nodelabels  ####-->> pod name = nodelabels/we can choose any
+  labels:
+    env: development
+spec:
+    containers:
+       - name: c00
+         image: ubuntu
+         command: ["/bin/bash", "-c", "while true; do echo Hello-Welcome to DevOps industry; sleep 5 ; done"]
+    nodeSelector:                                         
+       hardware: t2-medium
+
+save & exit vi
+
+$ kubectl apply -f pod6.yml
+
+$ kubectl get pods
+
+$ kubectl describe pod nodelabels  
+
+
+$ kubectl get nodes  ##-->> it shows nodes name 
+
+## now apply node labels name 
+
+$ kubectl label nodes worker1 hardware=t2-medium  ###-->> specify node name(worker1) & label name- hardware=t2-medium
+$ kubectl describe pod nodelabels ##-->> successfully assigned to label to worker1
+
+$ kubectl get pods
+
+------------------------------------------------------------------------------------------------------------
+
+
+EXAMPLE OF REPLICATION CONTROLLER-
+
+vi myrc.yml
+
+kind: ReplicationController               
+apiVersion: v1
+metadata:
+  name: myreplica              ##-->> this is ReplicationController name 
+spec:
+  replicas: 5                  ##-->> it creates 5 pods          
+  selector:                    ####-->> tells the controller which pods to watch/belongs to this RC        
+    myname: dharm           ##-->>selector value must be match with labels under template                            
+  template:                    ##-->>>>>>>>>>>>> under template pods details                
+    metadata:
+      name: testpod6           ##--> pod name
+      labels:            
+        myname: dharm       ##-->> labels must be match with selector
+    spec:
+     containers:
+       - name: c00
+         image: ubuntu
+         command: ["/bin/bash", "-c", "while true; do echo Hello-dpchoudhary!!!!; sleep 5 ; done"]
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+
+$ kubectl apply -f myrc.yml  ##-->>o/p: replicationcontroller/myreplica created
+$ kubectl get rc ##-->> shows: myreplica/desired/current=5 (myreplica is replicationcontroller name mentioned in yml)
+
+$ kubectl describe rc myreplica
+# control + l to comeout from above
+$ kubectl get pods ##-->> it shows 5 pods with name 
+# now delete 1 pod/select name from above command output
+$ kubectl delete pod myreplica-2wrst ##-->> this pod(myreplica-2wrst) deleted
+$ kubectl get pods ##--> new pods created check with delete pod name
+$ kubectl get rc
+$ kubectl get pods --show-labels
+
+# scale up by using label name or by RC name( as mentioned in yml)
+
+$ kubectl scale --replicas=8 rc -l myname=bhupinder
+# OR 
+$ kubectl scale --replicas=8 rc myreplica
+# o/p-->> replicationcontroller/myreplica scaled
+
+$ kubectl get rc 
+# o/p-->> it shows desired/current state is 8
+$ kubectl get pods 
+# o/p-->> shows 8 pods with name
+
+
+# scale down either by label name or by rc name 
+
+$ kubectl scale --replicas=1 rc -l myname=bhupinder
+# OR
+$ kubectl sale --replicas=1 rc myreplica
+# o/p-->>replicationcontroller/myreplica scaled
+
+$ kubectl get pods 
+# o/p-->> shows 1 running other terminating/deleted
+
+$ kubectl get rc
+# o/p-->> it shows 1 pod with name in running state/desired/current
+$ kubectl delete -f myrc.yml
+# it will delete all pods
+-------------------------------------------------------------------------------------------------------
+
+EXAMPLE OF REPLICA SET-
+
+vi myrs.yml
+
+
+kind: ReplicaSet                                    
+apiVersion: apps/v1                            
+metadata:
+  name: myrs           ##-->> replica set name 
+spec:
+  replicas: 2  
+  selector:                  
+    matchExpressions:                             # these must match the labels
+      - {key: myname, operator: In, values: [dpc, john, ram]}
+      - {key: env, operator: NotIn, values: [production]}
+  template:      
+    metadata:
+      name: testpod7
+      labels:              
+        myname: dpc  ##--> labels must be match with selector
+    spec:
+     containers:
+       - name: c00
+         image: ubuntu
+         command: ["/bin/bash", "-c", "while true; do echo Technical-Guftgu; sleep 5 ; done"]  
+
+
+## in last line -c represent container 
+
+
+save $ exit vi
+-------------------------------------------------------------------------------------------------
+
+$ kubectl apply -f myrs.yml
+# o/p-->> replicaset.apps/myrs created
+
+$ kubectl get rs
+# o/p-->> desired/current state is 2
+
+$ kubectl get pods
+
+# scale up/down by using replicaset name as in yml
+$ kubectl scale --replicas=1 rs myrs
+
+$ kubectl scale --replicas=5 rs myrs    
+
+## pls try with lavel name /and also check above command 
+
+-----------------------------------------------------------------------------------------------------------
+   deployment yml file example- 
+
+vi mydeploy.yml
+
+
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+   name: mydeployments           ##-->> this is deployment name 
+spec:
+   replicas: 2
+   selector:     
+    matchLabels:
+     name: deployment            ##-->> selector name must be match with labels name under template 
+   template: 
+     metadata:
+       name: testpod
+       labels:
+         name: deployment        ##-->> labels name must be same as selector name 
+     spec:
+      containers:
+        - name: c00
+          image: ubuntu
+          command: ["/bin/bash", "-c", "while true; do echo Hello-Welcome; sleep 5; done"]
+
+
+save & exit vi
+---------------------------------------------------------------------------------------------------------------------
+
+$ kubectl apply -f mydeploy.yml
+# o/p-->> deployment.apps/mydeployments created
+
+$ kubectl get deploy
+# o/p-->> mydeployments 2/2 running 
+
+$ kubectl describe deploy mydeployments  ##  mydeployments is deployment name in yml
+# o/p-->> shows more details 
+
+$ kubectl get rs
+# o/p-->> mydeployments-7565bb58c8/desired/current=2/ready/2
+
+$ kubectl get pods 
+# o/p-->> shows pods name as below with desired/current state 
+# mydeployments-7565bb-976j
+# mydeployments-75565bb-d5v4
+
+# now delete one pod (copy name from above command)
+$ kubectl delete pod mydeployments-7565bb-976j
+
+# but again new pod creating as we mentioned in yml
+$ kubectl get pods 
+
+$ kubectl get rs 
+
+# scale up & scale down 
+
+$ kubectl scale --replicas=1 deploy mydeployments
+$ kubectl get rs
+$ kubectl get pods
+
+$ kubectl scale --replicas=5 deploy mydeployments
+
+$ kubectl get rs
+$ kubectl get pods
+
+$ kubectl logs -f mydeployments-75565bb-d5v4  ## mydeployments-75565bb-d5v4-  this is pod name/check with kubectl get pods 
+# o/p-->> Hello-Welcome
+# control + z to come out from above output
+
+## NOW do changes in yml file 
+   vi mydploy.yml
+
+   hello- welcome -->> replace with-   good morning
+  & image ubuntu -->> replce with - centos
+
+
+
+save & exit vi 
+
+$ kubectl apply -f mydeploy.yml
+
+$ kubectl get deploy
+$ kubectl get rs
+# o/p-->> mydeplouyments-6ddrtyc- 2/desired/2current/2ready
+          mydeployments-75565bb-d5v4/0 desired/0 ready/0 current ---->> old pod is stop/closed
+
+$ kubectl get pods 
+# o/p-->> shows 2 pods running ( new pods with new name )
+
+
+
+$ kubectl logs -f mydeployments-6ddf76fc-fv4ld ( pod name copy from above command)
+# o/p-->> it shows good morning
+
+
+$ $ kubectl exec mydeployments-75565bb-d5v4-fv4ld --cat /etc/os-release   # mydeployments-75565bb-d5v4-fv4ld - this is pod name
+# o/p-->> shows centos image running and other details as well 
+
+# rollback 
+# here deployment means kind(yml) and mydeployments is deployment name as in yml 
+$ kubectl rollout status deployment mydeployments ##-->> 
+# o/p-->> successfully rolled out
+
+$ kubectl rollout history deployment mydeployment 
+$ kubectl rollout undo deploy/mydeployments ##-->> deploy or deployments both works try 
+$ kubectl get pods
+
+$ kubectl logs -f mydeployments-75565bb-d5v4-fv4ld   ## copy/paste pod name from above commands
+
+------------------------------------------------------------------------------------------------------------
+
+ ########################..........................KUBERNETES NETWORKING..................................###################################################
+
+example-1 container to container communication within same pod by localhost
+=================================
+vi pod1.yml
+
+
+kind: Pod
+apiVersion: v1
+metadata:
+  name: testpod
+spec:
+  containers:
+    - name: c00
+      image: ubuntu
+      command: ["/bin/bash", "-c", "while true; do echo Hello-Bhupinder; sleep 5 ; done"]
+    - name: c01
+      image: httpd
+      ports:
+       - containerPort: 80
+
+================+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++=-----------------------------------------------
+$ kubectl apply -f pod1.yml
+$ kubectl get pods
+$ kubectl exec testpod -it -c c00 -- /bin/bash
+# we are in under container c00 
+
+$ apt update && install curl 
+$ curl localhost:80
+# o/p-->> it works means container are communicating
+
+-----------------------------------------------------------------------------------
+
+# Example-2 estabilish connection bet'n two pods within same node 
+
+vi pod2.yml
+
+kind: Pod
+apiVersion: v1
+metadata:
+  name: testpod1
+spec:
+  containers:
+    - name: c01
+      image: nginx
+      ports:
+       - containerPort: 80
+---------------------------------------------
+
+vi pod3.yml
+
+kind: Pod
+apiVersion: v1
+metadata:
+  name: testpod2
+spec:
+  containers:
+    - name: c02
+      image: httpd
+      ports:
+       - containerPort: 80
+
+-----------------------------------------
+
+$ kubectl apply -f pod2.yml
+
+$ kubectl apply -f pod3.yml
+
+$ kubectl get pods 
+$ kubectl get pods -o wide 
+# o/p-->> its shows pod name with ip as below
+
+# testpod1 -->> 172.17.0.3
+# testpod2 -->>  172.17.0.4 
+
+$ curl 172.17.0.3:80   ( use ip of  testpod1)
+# o/p-->> welcome to nginx
+
+$ curl 172.17.0.4:80 (use ip of other testpod2)
+# o/p--> it works 
+############################################################################################################################################################
+
+##########################################....................... service in kubernetes................................##################################### 
+## services can be exposed in different ways by specifying a type of of in the service spec.
+
+## cluster ip(by default)
+## nodeport
+## loadbalancer( provided by cloud providers/ELB on Aws
+## headless
+
+## by default service can be run bet'n ports  30000 - 32767 .
+
+
+# here first create deployment then services yml 
+
+vi deployhttpd.yml
+
+
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+   name: mydeployments
+spec:
+   replicas: 1
+   selector:               #-->> tells the controller which pods to watch/belong to
+    matchLabels:
+     name: deployment     ##-->> selector name must be match with labels under template
+   template:
+     metadata:
+       name: testpod1
+       labels:
+         name: deployment
+     spec:
+      containers:
+        - name: c00
+          image: httpd
+          ports:
+          - containerPort: 80
+===================================================================================================================
+kubectl apply -f deployhttpd.yml
+
+kubectl get pods
+kubectl get pods -o wide 
+# o/p-->> it shows pods ip and node ip 
+
+$ curl 172.17.0.5:80   ## pod ip:80/ taken  pods ip
+# o/p-->> it works 
+=================================================================================================================
+
+
+now creates sevices 
+
+vi service.yml
+
+kind: Service                             # Defines to create Service type Object
+apiVersion: v1
+metadata:
+  name: demoservice
+spec:
+  ports:
+    - port: 80                               # Containers port exposed
+      targetPort: 80                     # Pods port
+  selector:
+    name: deployment                    # Apply this service to any pods which has the specific label
+  type: ClusterIP                       # Specifies the service type i.e ClusterIP or NodePort
+
+=====================================================================================
+
+
+$ kubectl apply -f service.yml
+
+$ kubectl get svc 
+# o/p-->> it shows demoservice created by us with cluster ip/virtual ip/vip 10.203.231.98
+
+$ curl 10.103.231.98:80  ## use virtual/cluster ip copy/paste from above command
+# o/p-->> it works
+
+$ kubectl get pods 
+# it shows pods name - mydeployments-9cbf64-s67pn
+
+# now we delete pod /pls copy pod name from above
+$ kubectl delete pod mydeployments-9cbf64-s67pn
+# o/p-->> pods deleted
+
+$ kubectl get pods 
+# o/p new pods creating check with previous pod name and cluster ip is also same
+
+$ kubectl get svc  
+
+$ curl 10.103.231.98:80
+# o/p-->> it works 
+----------------------------------------------------------------------------------------------------------------------------------
+#########################################################################################################################################################
+
+
+###########################.......................NodePort/services......................................#########################################################
+
+# here we create deployment & service  two yml file
+
+# make a service accessible from outside the cluster
+# expose the service on the same port of each selected node in the cluster using NAT.
+
+NOTE- HERE WE USE SIMILAR YML FILE AS IN ABOVE /PLS DELETE FILE OR EDIT SOMETHING DURING LAB 
+
+vi deployhttpd.yml
+
+
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+   name: mydeployments
+spec:
+   replicas: 1
+   selector:               #-->> tells the controller which pods to watch/belong to
+    matchLabels:
+     name: deployment     ##-->> selector name must be match with labels under template
+   template:
+     metadata:
+       name: testpod1
+       labels:
+         name: deployment
+     spec:
+      containers:
+        - name: c00
+          image: httpd
+          ports:
+          - containerPort: 80
+
+save & exit vi
+
+$ kubectl apply -f deployhttpd.yml
+
+
+-----------------------------------------------
+# here again we copy similar yml file for service /pls make changes during lab.delete previous lab
+now creates sevices 
+
+vi svc.yml
+
+kind: Service                             # Defines to create Service type Object
+apiVersion: v1
+metadata:
+  name: demoservice
+spec:
+  ports:
+    - port: 80                               # Containers port exposed
+      targetPort: 80                     # Pods port
+  selector:
+    name: deployment                    # Apply this service to any pods which has the specific label
+  type: NodePort                       # Specifies the service type  NodePort
+
+
+
+$ kubectl apply -f svc.yml
+
+$ kubectl get svc 
+# o/p-->> name/demoservice and cluster ip .133.97.10.96 and type/NodePort & port/80:31341/tcp
+$ kubectl get svc 
+
+# NOTE- NOW ALLOW 31341 IP AS IN ABOVE IN EC2/ OR WE SELECT ALL TRAFIC IN EC2 WHILE CREATIN 
+
+
+# now copy the public dns of ec2-instance : 31341 /paste on browser
+
+# o/p-->> it works/httpd 
+######################################################################################
+
+
+################################...............volume lab.......................##################################
+## volume types- 
+## emptydir
+## nfs
+## awselasticblockstore
+## glusterfs & cephfs
+## secret & gitrepo
+
+vi emptydir.yml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myvolemptydir   ## pod name 
+spec:
+  containers:
+  - name: c1
+    image: centos
+    command: ["/bin/bash", "-c", "sleep 15000"]
+    volumeMounts:                                    # Mount definition inside the container
+      - name: xchange
+        mountPath: "/tmp/xchange"          
+  - name: c2
+    image: centos
+    command: ["/bin/bash", "-c", "sleep 10000"]
+    volumeMounts:
+      - name: xchange                 ## volumeMounts name must be same 
+        mountPath: "/tmp/data"
+  volumes:                                                   
+  - name: xchange
+    emptyDir: {}
+
+
+save & exit vi 
+
+
+$ kubectl apply -f emptydir.yml
+
+
+$ kubectl get pods
+$ o/p-->> pod/myvolemptydir created
+
+$ kubectl exec myvolemptydir -c c1 -it -- /bin/bash
+$ cd /tmp
+$ ls
+$ cd xchange/
+# here create a file and write something
+     vi abc.yml
+
+   hello dp good morning
+save and exit
+
+$ ls
+# o/p-->> abc.yml shows
+
+$ exit  # to come out from container c1
+
+# similarly do for container c2
+
+$ kubectl exec myvolemptydir -c c2 -it -- /bin/bash
+$ cd /tmp
+$ ls
+$ cd data
+$ ls
+# o/p-->> it shows abc.yml  ## this file created in c1 container but shown in c2 container
+
+$ cat abc.yml
+# o/p-->>  hello dp good morning 
+
+# now we edit this file 
+
+$  vi abc.yml
+  hello chennai
+
+save & exit vi
+
+$ exit ## to come out from c2 container
+
+# now again go to c1 container and check above edited file content 
+
+
+$ kubectl exec myvolemptydir -c c1 -it -- /bin/bash
+$ cat /tmp/xchange/abc.yml
+# o/p-->> hello dp good morning
+          hello chennai
+
+$ exit
+--------------------------------------------------------------------------------
+###########################################################################################################################################
+
+
+
+
+
+#################.................persistent volume &  liveness probe....................##################################################
+
+# at first launch ec2 instance/ubuntu with 2 nodes(1 master and 1 node) and taken t2-medium
+# avalibilty zone- ap-south-1a 
+# install k8s and launch
+# now left side in aws dashboard - elastic block store-->> volumes-->> select 10 gb volume/ av zone-ap-south 1-a similar to ec2 and--->> create volume
+# after cvolume created-->> copy volume id and paste on yml file 
+
+
+# here we create 3 yml file 
+# persistent volume manifest file  for create pv
+# persitent volume claim manifest file for claim pv
+# deploypvc manifest file ( for using sotrage allocated 1 gb)/to use pvc
+
+vi mypv.yml
+
+
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: myebsvol
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Recycle
+  awsElasticBlockStore:
+    volumeID:           # paste EBS VOLUME ID from aws ec2 which we create
+    fsType: ext4
+
+
+
+$ kubectl apply -f mypv.yml
+# o/p-->> persistentvolume/myebsvol created
+
+$ kubectl get pv
+
+
+==========================================================================
+vi mypvc.yml
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: myebsvolclaim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi   # specify storage in gb required
+
+
+$ kubectl apply -f mypvc.yml
+# o/p-->> persistentvolumeclaim/myebsvolclaim created
+
+$ kubectl get pvc
+# o/p-->> storage bound and capacity 1 Gi
+
+# now we have to use this 1gb storage 
+
+# so create one yml file as below
+--------------------------------------------------------------
+# vi deploypvs.yml
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pvdeploy
+spec:
+  replicas: 1
+  selector:      # tells the controller which pods to watch/belong to
+    matchLabels:
+     app: mypv
+  template:
+    metadata:
+      labels:
+        app: mypv
+    spec:
+      containers:
+      - name: shell
+        image: centos
+        command: ["bin/bash", "-c", "sleep 10000"]
+        volumeMounts:
+        - name: mypd
+          mountPath: "/tmp/persistent"
+      volumes:
+        - name: mypd
+          persistentVolumeClaim:
+            claimName: myebsvolclaim
+
+
+------------------------------------------------------------------------
+
+$ kubectl apply -f deploypvc.yml
+
+$ kubectl get deploypvc
+
+$ kubectl get rs  ##-->> for replica set
+
+$ kubectl get pods
+# o/p-->> pvdeploy-8587567959-8d4hf  ## this is pod name
+
+
+# now go inside pod/container (copy/paste pod name from above)
+
+$ kubectl exec pvdeploy-8587567959-8d4hf -it -- /bin/bash
+# now we are in pod/container
+$ cd /tmp/persistent/
+$ ls
+$ vi testfile
+ hello do good morning
+
+save and exit
+
+$ ls
+# o/p-->> it shows testfile
+
+$ exit # to come out from pod/container
+
+# now delete tthis pod  
+
+$ kubectl delete pod pvdeploy-8587567959-8d4hf   # pod name get from kubectl get pods commands
+
+$ kubectl get pods
+# o/p-->>  pvdeploy-8587567959-zn9x9  # new pod created
+
+# now go inside the new pod/container 
+
+$ kubectl exec  pvdeploy-8587567959-zn9x9 -it -- /bin/bash
+
+$ cd /tmp/persistent
+
+$ ls
+# it shows testfile
+$ cat testfile 
+# o/p-->> hello dp goodmorning  # as we mentioned in previous
+$ exit 
+
+
+####################################################################################################################################################
+
+##################################..................HEALTHCHECK/LIVENESSPROBE.......................################################################
+
+# under container, Application is running or not 
+
+vi liveness.yml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    test: liveness
+  name: mylivenessprobe
+spec:
+  containers:
+  - name: liveness
+    image: ubuntu
+    args:
+    - /bin/sh
+    - -c
+    - touch /tmp/healthy; sleep 1000
+    livenessProbe:                                          
+      exec:
+        command:                                         
+        - cat                
+        - /tmp/healthy
+      initialDelaySeconds: 5      ###-->>  time taken during pod or any service taken/start ## testing start after 5 seconds    
+      periodSeconds: 5            ###-->>  on each 5 seconds testing                   
+      timeoutSeconds: 30          ###-->>  if no reply then restart container  after 30 seconds
+                                  
+ $ kubectl apply -f liveness.yml
+
+ $ kubectl get pods
+ 
+ $ kubectl describe pod mylivenessprob  ##-->> copy pod name from above command output
+ # o/p-->> here under container 
+                liveness: details about time period and other details
+
+# go inside the container
+$ kubectl get exec mylivenessprobe -it -- /bin/bash
+$ cat /tmp/healthy
+$ echo $?
+# o/p-->> 0  means status is healthy
+
+$ echo cat /tmp/dp
+# o/p-->> no such file/directory 
+$ echo $?
+# o/p-->> 1 means error any non zero value( 1/3/137 etc.)
+
+######################################################################################################
+##################..............CONFIGMAP & SECRETS....................#########################
+
+# configmap can be accessed in following ways
+# as environment variables
+# as volumes in the pod
+
+# secrets-
+# secrets size limit 1 mb
+# it can be create from a text file or from yml file
+# api-server stores secrets as plain-text in etcd
+
+# first we need to create one configuration file as below
+
+
+vi sample.conf
+# write something here
+
+this is my configuration file for my application
+
+save and exit vi
+
+#now create configmap object 
+
+$ kubectl create configmap mymap --from-file=sample.conf
+
+# o/p-->> configmap/myapp created
+kubectl get configmap
+
+$ kubectl describe configmap myapp
+
+# now this conf. file will be avalable for all nodes/all pods uder one cluster
+
+# so create a pod by yml file 
+
+vi deployconfigmap.yml
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myvolconfig
+spec:
+  containers:
+  - name: c1
+    image: centos
+    command: ["/bin/bash", "-c", "while true; do echo Technical-Guftgu; sleep 5 ; done"]
+    volumeMounts:
+      - name: testconfigmap
+        mountPath: "/tmp/config"   # the config files will be mounted as ReadOnly by default here
+  volumes:
+  - name: testconfigmap
+    configMap:
+       name: mymap   # this should match the config map name created in the first step
+       items:
+       - key: sample.conf
+         path: sample.conf
+
+$ kubectl apply -f deployconfigmap.yml
+$ kubectl get pods
+$ kubectl exec myvolconfig -it -- /bin/bash
+
+$ cd /tmp
+$ ls
+$ ls -l
+$ cd config 
+# o/p-->> sample.conf shown
+
+$ cat sample.conf
+# o/p-->> this is my configuration file for my application
+
+# method-2 via as an Environment variable
+-------------------------------------------
+$ vi deployenv.yml
+ 
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myenvconfig
+spec:
+  containers:
+  - name: c1
+    image: centos
+    command: ["/bin/bash", "-c", "while true; do echo Hello how are you; sleep 5 ; done"]
+    env:
+    - name: MYENV         # env name in which value of the key is stored
+      valueFrom:
+        configMapKeyRef:
+          name: mymap      # name of the config created
+          key: sample.conf            
+
+save & exit vi
+
+$ kubectl apply -f deployenv.yml
+
+$ kubectl get pods
+
+# now go inside the pod 
+$ kubectl exec myenvconfig -it -- /bin/bash  ## pod name copy from above command
+$ env
+$ echo $MYENV
+# o/p-->> this is my configuration file for my app
+
+$ exit 
+
+------------------------------------------------------------------------------------------
+
+#### SECRETS
+# create a file username.txt under root and password.txt under password123
+
+$ echo "root" > username.text; echo "mypassword123" > password.txt
+
+$ cat username.txt
+# o/p-->> root
+
+$ cat password.txt
+# o/p-->> mypassword123
+ 
+$ kubectl create secret generic mysecret --from-file=username.txt --from -file=password.txt
+# o/p-->> secret/mysecret created
+
+$ kubectl get secret 
+# o/p-->> shown mysecret/opaque means not visible content
+
+$ kubectl describe secret mysecret
+# o/p-->> password.txt: 14 byte and username.txt:5 byte (not shown its content)
+
+-------------------------------------------------------
+
+
+# now how to share this secret with container
+
+vi deploysecret.yml
+
+ apiVersion: v1
+kind: Pod
+metadata:
+  name: myvolsecret      ##-->> pod name
+spec:
+  containers:
+  - name: c1
+    image: centos
+    command: ["/bin/bash", "-c", "while true; do echo Hello everyone; sleep 5 ; done"]
+    volumeMounts:
+      - name: testsecret
+        mountPath: "/tmp/mysecrets"   # the secret files will be mounted as ReadOnly by default here
+  volumes:
+  - name: testsecret
+    secret:
+       secretName: mysecret  
+
+save & exit vi 
+
+$ kubectl apply -f deploysecret.yml
+$ kubectl get pods
+# go inside the pod
+$ kubectl exec myvolsecret -it -- /bin/bash
+$ cd /tmp
+$ ls
+$ cd mysecrets/
+# o/p-->>password.txt username.txt
+
+$ cat password.txt
+# o/p-->> mypassword123
+
+$ cat username.txt
+# o/p-->> root
+
+
+###########################################################################################################################################
